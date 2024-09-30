@@ -14,3 +14,16 @@ services:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_DB=biji
+
+  frontend:
+      build:
+        context: ./front-quiz     # Путь к папке, где находится Dockerfile
+        dockerfile: dockerfile     # Имя Dockerfile (по умолчанию)
+      ports:
+        - 3000:3000                 # Пробрасываем порт
+      networks:
+        - frontend-network         # Сеть, которую мы создадим ниже
+
+networks:
+  frontend-network:
+    driver: bridge              # Используем мостовую сеть

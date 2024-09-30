@@ -1,0 +1,29 @@
+# Используем официальный образ Node.js как базовый
+FROM node:16 AS build
+
+# Устанавливаем рабочую директорию
+WORKDIR /app
+
+# Копируем package.json и package-lock.json
+COPY package*.json ./
+
+# Устанавливаем зависимости
+RUN npm install
+
+# Копируем все файлы проекта в контейнер
+COPY . .
+
+# Собираем проект
+RUN npm run build
+
+# Используем Nginx для раздачи статических файлов
+FROM nginx:alpine
+
+# Копируем собранные файлы из предыдущего этапа
+COPY --from=build /app/build /usr/share/nginx/html
+
+# Открываем порт 80
+EXPOSE 3000
+
+# Запускаем Nginx
+CMD ["nginx", "-g", "daemon off;"]

@@ -4,6 +4,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request, Depends, F
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
 from fastapi.responses import RedirectResponse
+from fastapi.middleware.cors import CORSMiddleware
 import random
 from sqlalchemy.orm import Session
 from models import Student, Answer, Question
@@ -14,6 +15,16 @@ from models import Base
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
+
+origins = ["*"]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 templates = Jinja2Templates(directory="templates")
 
 # Глобальные переменные
@@ -94,6 +105,7 @@ async def teacher_websocket(websocket: WebSocket, db: Session = Depends(get_db))
     except WebSocketDisconnect:
         teachers_connected.remove(websocket)
 
+
 # Отправка текущего вопроса студентам
 async def send_question_to_students():
     global current_question_index
@@ -135,22 +147,58 @@ async def send_statistics_to_teacher(db: Session):
 # Получение статистики ответов по текущему вопросу
 async def get_answer_stats(question_id: int, db: Session):
     answers = db.query(Answer).filter(Answer.question_id == question_id).all()
-    stats = {}
-    for answer in answers:
-        if answer.answer_text in stats:
-            stats[answer.answer_text] += 1
-        else:
-            stats[answer.answer_text] = 1
+    stats = {'correct': 0, 'incorrect': 0}
+    
+    # Assuming you have a way to determine the correct answer
+    question = db.query(Question).filter(Question.id == question_id).first()
+    if question:
+        correct_answer = question.correct_answer
+
+        for answer in answers:
+            if answer.answer_text == correct_answer:
+                stats['correct'] += 1
+            else:
+                stats['incorrect'] += 1
+    
     return stats
 
+async def send_all_statistics_to_teacher(db: Session):
+    all_stats = {}
+    questions = db.query(Question).all()
+    
+    for question in questions:
+        all_stats[question.id] = await get_answer_stats(question.id, db)
+    
+    print("Sending stats to teacher:", all_stats)  # Debugging line
+    
+    for teacher_socket in teachers_connected:
+        await teacher_socket.send_json({"type": "stats", "all_stats": all_stats})
+
+# Update this line in the student_websocket method where you call send_statistics_to_teacher
+
+
 # Запуск квиза
+# Start the quiz and reset stats
 @app.post("/start_quiz")
 async def start_quiz(db: Session = Depends(get_db)):
     global current_question_index
-    load_questions(db)
+
+    # Reset the current question index and load questions again
     current_question_index = 0
+    load_questions(db)
+
+    # Clear previous answers from the database (optional if you want a fresh start)
+    db.query(Answer).delete()
+    db.commit()
+
+    # Notify connected students about the start of a new quiz
     await send_question_to_students()
+
+    # Notify connected teachers with empty stats
+    await send_all_statistics_to_teacher(db)
+
     return {"message": "Quiz started"}
+
 
 # Следующий вопрос
 @app.post("/next_question")
@@ -160,12 +208,11 @@ async def next_question():
     await send_question_to_students()
     return {"message": "Next question sent"}
 
-@ app.websocket("/ws/student/{student_id}")
+@app.websocket("/ws/student/{student_id}")
 async def student_websocket(websocket: WebSocket, student_id: str, db: Session = Depends(get_db)):
     await websocket.accept()
     students_connected.append(websocket)
-    
-    # Отправляем текущий вопрос студенту при подключении, если квиз идет
+
     if current_question_index >= 0:
         await send_current_question_to_student(websocket)
 
@@ -175,14 +222,31 @@ async def student_websocket(websocket: WebSocket, student_id: str, db: Session =
             question_id = data.get("question_id")
             answer_text = data.get("answer_text")
 
-            # Сохранение ответа студента в БД
             student = db.query(Student).filter(Student.unique_id == student_id).first()
-            answer = Answer(student_id=student.id, question_id=question_id, answer_text=answer_text)
-            db.add(answer)
-            db.commit()
+            if student:
+                answer = Answer(student_id=student.id, question_id=question_id, answer_text=answer_text)
+                db.add(answer)
+                db.commit()
 
-            # Отправка обновленной статистики преподавателю
-            await send_statistics_to_teacher(db)
+                # Send updated stats after each answer
+                await send_all_statistics_to_teacher(db)
+            else:
+                print(f"Student with ID {student_id} not found.")
+
     except WebSocketDisconnect:
+        print(f"Student {student_id} disconnected.")
         students_connected.remove(websocket)
+    except Exception as e:
+        print(f"Error: {e}")
+        await websocket.close()
+
+    except WebSocketDisconnect:
+        print(f"Student {student_id} disconnected.")
+        students_connected.remove(websocket)
+    except Exception as e:
+        print(f"Error: {e}")
+        await websocket.close()
+
+
+
 
