@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Student Quiz</title>
+</head>
+<body>
+    <h1>Quiz in Progress</h1>
+    <div id="question"></div>
+    <form id="answerForm">
+        <div id="options"></div>
+        <button type="submit">Submit Answer</button>
+    </form>
+
+    <script>
+        let currentQuestionId = null;  // Здесь будет храниться ID текущего вопроса
+
+        const studentSocket = new WebSocket("ws://localhost:8070/ws/student/{{ student_id }}");
+
+        studentSocket.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+            
+            if (data.question) {
+                document.getElementById('question').innerText = data.question.text;
+
+                const optionsDiv = document.getElementById('options');
+                optionsDiv.innerHTML = '';
+                data.question.options.forEach(option => {
+                    optionsDiv.innerHTML += `<label><input type="radio" name="answer" value="${option}"> ${option}</label><br>`;
+                });
+
+                // Сохраняем ID текущего вопроса
+                currentQuestionId = data.question.id;
+            }
+        };
+
+        document.getElementById('answerForm').onsubmit = async function(e) {
+        e.preventDefault();
+        
+        const selectedAnswer = document.querySelector('input[name="answer"]:checked').value;
+
+        // Проверяем, что есть текущий вопрос
+        if (currentQuestionId === null) {
+            alert("No question available");
+            return;
+        }
+
+        // Отправляем ответ с ID вопроса
+        studentSocket.send(JSON.stringify({
+            question_id: currentQuestionId,  // Убедитесь, что это значение установлено
+            answer_text: selectedAnswer
+        }));
+    };
+    </script>
+</body>
+</html>

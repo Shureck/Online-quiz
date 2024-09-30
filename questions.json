@@ -1,0 +1,26 @@
+[
+    {
+        "id": 1,
+        "text": "What is the capital of France?",
+        "options": ["Paris", "London", "Berlin", "Madrid"],
+        "correct_answer": "Paris"
+    },
+    {
+        "id": 2,
+        "text": "What is 2 + 2?",
+        "options": ["3", "4", "5", "6"],
+        "correct_answer": "4"
+    },
+    {
+        "id": 3,
+        "text": "What is 2 + 3?",
+        "options": ["3", "4", "5", "6"],
+        "correct_answer": "5"
+    },
+    {
+        "id": 4,
+        "text": "What is 2 + 4?",
+        "options": ["3", "4", "5", "6"],
+        "correct_answer": "6"
+    }
+]

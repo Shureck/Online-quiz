@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+
+  db:
+    restart: always
+    image: postgres:11.11
+    # Внешний том(volume) и место где он будет подключен внутри контейнера
+    volumes:
+      - ./db/:/var/lib/postgresql/data/
+    ports:
+      - 5435:5432
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=biji

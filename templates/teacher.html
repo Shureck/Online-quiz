@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Teacher Page</title>
+</head>
+<body>
+    <h1>Teacher's Quiz Control</h1>
+    <button onclick="startQuiz()">Start Quiz</button>
+    <button onclick="nextQuestion()">Next Question</button>
+
+    <h2>Current Question</h2>
+    <div id="question"></div>
+
+    <h2>Answer Stats</h2>
+    <div id="stats"></div>
+
+    <script>
+        const teacherSocket = new WebSocket("ws://localhost:8070/ws/teacher");
+
+        teacherSocket.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+
+            if (data.question) {
+                document.getElementById('question').innerText = data.question.text;
+            }
+
+            if (data.stats) {
+                const statsDiv = document.getElementById('stats');
+                statsDiv.innerHTML = '';  // Очищаем предыдущую статистику
+                for (const [answer, count] of Object.entries(data.stats)) {
+                    statsDiv.innerHTML += `<p>${answer}: ${count}</p>`;  // Добавляем новую статистику
+                }
+            }
+        };
+
+        async function startQuiz() {
+            const response = await fetch('/start_quiz', { method: 'POST' });
+            const data = await response.json();
+            alert(data.message);
+        }
+
+        async function nextQuestion() {
+            const response = await fetch('/next_question', { method: 'POST' });
+            const data = await response.json();
+            alert(data.message);
+        }
+    </script>
+</body>
+</html>
