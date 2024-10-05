@@ -13,7 +13,7 @@ const LoginPage = () => {
 
     try {
       // Проверка, существует ли студент по уникальному ID
-      const response = await axios.get(`http://localhost:80/student/${studentID}`);
+      const response = await axios.get(`http://62.109.26.235:80/student/${studentID}`);
       
       if (response.status === 200) {
         // Перенаправление студента на страницу опроса или профиля

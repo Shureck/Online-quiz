@@ -12,23 +12,29 @@ const RegisterPage = () => {
         e.preventDefault();
     
         try {
-            const response = await axios.post('http://localhost:80/register_student', {
-                name,
-            }, {
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
+            const response = await axios.post('http://62.109.26.235:80/register_student', 
+                new URLSearchParams({
+                    name: name
+                }), 
+                {
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    }
                 }
-            });
+            ).then((response) => {
+                console.log(response);
+                const studentID = response.data; // Извлекаем ID студента из URL
+                navigate(`/student/${studentID}`); // Перенаправление на страницу студента
+              });
     
             // Проверка на 303 статус для редиректа
             if (response.status === 303) {
-                const location = response.headers.location; // Получаем заголовок Location
+                const location = response.headers['location']; // Headers might be lowercase
+                console.log(location);
                 const studentID = location.split('/').pop(); // Извлекаем ID студента из URL
                 navigate(`/student/${studentID}`); // Перенаправление на страницу студента
             } else {
-                // Если код не 303, но все равно успешный, обрабатываем как 201
-                const studentID = response.data.studentID; // Предполагаем, что ID может быть в ответе
-                navigate(`/student/${studentID}`);
+                setError('Unexpected response status.');
             }
         } catch (error) {
             setError('Регистрация не удалась. Пожалуйста, попробуйте еще раз.');

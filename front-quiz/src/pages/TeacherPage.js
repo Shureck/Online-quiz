@@ -8,7 +8,7 @@ const TeacherPage = () => {
   const [socket, setSocket] = useState(null);
 
   useEffect(() => {
-    const socket = new WebSocket('ws://localhost:80/ws/teacher');
+    const socket = new WebSocket('ws://62.109.26.235:80/ws/teacher');
 
     socket.onmessage = (event) => {
       const data = JSON.parse(event.data);
@@ -38,7 +38,7 @@ const TeacherPage = () => {
 
   const handleStartQuiz = async () => {
     try {
-      const response = await fetch('http://localhost:80/start_quiz', {
+      const response = await fetch('http://62.109.26.235:80/start_quiz', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -63,7 +63,7 @@ const TeacherPage = () => {
 
   const handleNextQuestion = async () => {
     try {
-      const response = await fetch('http://localhost:80/next_question', {
+      const response = await fetch('http://62.109.26.235:80/next_question', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

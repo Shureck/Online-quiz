@@ -87,7 +87,7 @@ async def teacher_page(request: Request):
 # Маршрут для страницы студента
 @app.get("/student/{student_id}", response_class=HTMLResponse)
 async def student_page(request: Request, student_id: str):
-    return templates.TemplateResponse("student_quiz.html", {"request": request, "student_id": student_id})
+    return student_id
 
 # WebSocket для преподавателя
 @app.websocket("/ws/teacher")
@@ -155,7 +155,7 @@ async def get_answer_stats(question_id: int, db: Session):
         correct_answer = question.correct_answer
 
         for answer in answers:
-            if answer.answer_text == correct_answer:
+            if answer.is_correct == True:
                 stats['correct'] += 1
             else:
                 stats['incorrect'] += 1
@@ -224,7 +224,9 @@ async def student_websocket(websocket: WebSocket, student_id: str, db: Session =
 
             student = db.query(Student).filter(Student.unique_id == student_id).first()
             if student:
-                answer = Answer(student_id=student.id, question_id=question_id, answer_text=answer_text)
+                tr = quiz_data[question_id-1]['correct_answer'] == answer_text
+                print(question_id-1, quiz_data[question_id-1]['correct_answer'], answer_text,quiz_data[question_id-1]['correct_answer'] == answer_text)
+                answer = Answer(student_id=student.id, question_id=question_id, answer_text=answer_text, is_correct=quiz_data[question_id-1]['correct_answer'] == answer_text)
                 db.add(answer)
                 db.commit()
 
