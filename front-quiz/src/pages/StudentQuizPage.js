@@ -5,6 +5,7 @@ import './StudentQuizPage.css';
 const StudentQuizPage = () => {
   const { student_id } = useParams();
   const [currentQuestion, setCurrentQuestion] = useState(null);
+  const [currentAnswer, setCurrentAnswer] = useState(null);
   const [selectedAnswer, setSelectedAnswer] = useState(null);
   const [socket, setSocket] = useState(null);
   const [hasSubmitted, setHasSubmitted] = useState(false); 
@@ -22,8 +23,9 @@ const StudentQuizPage = () => {
       const data = JSON.parse(event.data);
       if (data.question) {
         setCurrentQuestion(data.question);
-        setHasSubmitted(false); 
-        setSelectedAnswer(null); 
+        setCurrentAnswer(data.answer); // Устанавливаем текущий ответ
+        setHasSubmitted(!!data.answer); // Если ответ уже есть, блокируем отправку
+        setSelectedAnswer(data.answer || null); // Если ответ уже есть, делаем его выбранным
       }
     };
 
@@ -71,9 +73,9 @@ const StudentQuizPage = () => {
                   type="radio"
                   name={`question-${currentQuestion.id}`}
                   value={option}
-                  checked={selectedAnswer === option}
+                  checked={selectedAnswer === option} // Отмечаем, если совпадает с выбранным
                   onChange={() => setSelectedAnswer(option)}
-                  disabled={hasSubmitted} 
+                  disabled={hasSubmitted} // Делаем неактивным, если уже отправлено
                 />
                 {option}
               </label>
@@ -81,7 +83,7 @@ const StudentQuizPage = () => {
           </div>
           <button
             onClick={handleAnswerSubmit}
-            disabled={!selectedAnswer || hasSubmitted} 
+            disabled={!selectedAnswer || hasSubmitted} // Делаем кнопку неактивной, если отправлено
             className="submit-button"
           >
             Отправить ответ
@@ -95,3 +97,4 @@ const StudentQuizPage = () => {
 };
 
 export default StudentQuizPage;
+

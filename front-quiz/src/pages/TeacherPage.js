@@ -1,9 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import './TeacherPage.css'; // Import the CSS file
+import { Bar } from 'react-chartjs-2';
+import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
+
+ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 const TeacherPage = () => {
   const [studentActivity, setStudentActivity] = useState([]);
   const [questionStats, setQuestionStats] = useState({});
+  const [questionText, setQuestionText] = useState({});
   const [studentAnswers, setStudentAnswers] = useState({});
   const [socket, setSocket] = useState(null);
 
@@ -16,7 +21,8 @@ const TeacherPage = () => {
       if (data.type === 'student_activity') {
         setStudentActivity(data.active_students);
       } else if (data.type === 'stats') {
-        setQuestionStats(data.all_stats);
+        setQuestionStats(data.stats);
+        setQuestionText(data.question);
       } else if (data.type === 'student_answer') {
         const { student_id, answer_text, question_id } = data;
         setStudentAnswers((prev) => ({
@@ -53,7 +59,7 @@ const TeacherPage = () => {
       console.log(result.message);
   
       // Reset the questionStats to an empty object when the quiz starts
-      setQuestionStats({});
+      // setQuestionStats({});
   
     } catch (error) {
       console.error(error);
@@ -81,40 +87,57 @@ const TeacherPage = () => {
     }
   };
 
+  const labels = Object.keys(questionStats);  // Варианты ответов
+  const data = Object.values(questionStats);  // Количество ответов
+  
+  // Данные для диаграммы
+  const chartData = {
+    labels: labels,
+    datasets: [
+      {
+        label: 'Количество ответов',
+        data: data,
+        backgroundColor: ['rgba(75, 192, 192, 0.2)'],
+        borderColor: ['rgba(75, 192, 192, 1)'],
+        borderWidth: 1,
+      },
+    ],
+  };
+
+  const options = {
+    responsive: true,
+    plugins: {
+      legend: {
+        position: 'top',
+      },
+      title: {
+        display: true,
+        text: 'Статистика ответов',
+      },
+    },
+  };
+
   return (
     <div className="teacher-container">
       <h2>Панель преподавателя</h2>
-  
+
       <button onClick={handleStartQuiz} className="start-quiz-button">Начать квиз</button>
       <button onClick={handleNextQuestion} className="next-question-button">Следующий вопрос</button>
-  
+
       <div className="quiz-stats">
-        <h3>Статистика ответов</h3>
-        {Object.keys(questionStats).length > 0 ? (
-            <table className="stats-table">
-            <thead>
-                <tr>
-                <th>ID вопроса</th>
-                <th>Кол-во правильных ответов</th>
-                <th>Кол-во неправильных ответов</th>
-                </tr>
-            </thead>
-            <tbody>
-                {Object.entries(questionStats).map(([questionId, { correct, incorrect }]) => (
-                <tr key={questionId}>
-                    <td>{questionId}</td>
-                    <td className="correct-cell">{correct}</td>
-                    <td className="incorrect-cell">{incorrect}</td>
-                </tr>
-                ))}
-            </tbody>
-            </table>
+        {typeof questionText === 'string' && questionText.length > 0 ? (
+          <>
+            <h3>{questionText}</h3>
+            {Object.keys(questionStats).length > 0 ? (
+              <Bar data={chartData} options={options} />
+            ) : (
+              <p>No statistics available yet. Start the quiz to see the data.</p>
+            )}
+          </>
         ) : (
-            <p>No statistics available yet. Start the quiz to see the data.</p>
+          <p>Вопрос ещё не загружен. Пожалуйста, подождите.</p>
         )}
       </div>
-
-
     </div>
   );
   

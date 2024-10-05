@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, Boolean
+from sqlalchemy import Column, Integer, String, ForeignKey, Boolean, JSON
 from sqlalchemy.orm import relationship
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
@@ -28,7 +28,7 @@ class Question(Base):
     __tablename__ = 'questions'
     id = Column(Integer, primary_key=True, index=True)
     text = Column(String)
-    options = Column(String)  # Варианты ответов в виде JSON строки
+    options = Column(JSON)  # Варианты ответов в виде JSON строки
     correct_answer = Column(String)
 
 class Answer(Base):
@@ -64,7 +64,7 @@ def add_questions(quiz_data:dict):
                 new_question = Question(
                     id=question["id"],
                     text=question["text"],
-                    options=json.dumps(question["options"], ensure_ascii=False),
+                    options=question["options"],
                     correct_answer=question["correct_answer"]
                 )
                 session.add(new_question)
@@ -85,6 +85,13 @@ def add_answer(student_id:str, question_id:str, answer_text:str, is_correct:bool
         answer = Answer(student_id=student_id, question_id=question_id, answer_text=answer_text, is_correct=is_correct)
         session.add(answer)
         session.commit()
+
+def get_answer(student_id:str, question_id:str):
+    with SessionLocal() as session:
+        student_id = get_student(student_id).id
+        print(student_id)
+        answer = session.query(Answer).filter(Answer.question_id == question_id, Answer.student_id == student_id).first()
+        return answer
 
 def get_all_answers(question_id):
     with SessionLocal() as session:
