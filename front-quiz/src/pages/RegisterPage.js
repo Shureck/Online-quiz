@@ -12,7 +12,7 @@ const RegisterPage = () => {
         e.preventDefault();
     
         try {
-            const response = await axios.post('http://62.109.26.235:80/register_student', 
+            const response = await axios.post(`http://${process.env.REACT_APP_HOST}/register_student`, 
                 new URLSearchParams({
                     name: name
                 }), 

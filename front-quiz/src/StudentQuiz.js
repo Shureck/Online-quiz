@@ -7,7 +7,7 @@ const StudentQuiz = ({ studentId }) => {
     const [selectedAnswer, setSelectedAnswer] = useState('');
 
     useEffect(() => {
-        const studentSocket = new WebSocket(`ws://62.109.26.235:80/ws/student/${studentId}`);
+        const studentSocket = new WebSocket(`ws://${process.env.REACT_APP_HOST}/ws/student/${studentId}`);
 
         studentSocket.onmessage = (event) => {
             const data = JSON.parse(event.data);
@@ -36,7 +36,7 @@ const StudentQuiz = ({ studentId }) => {
             return;
         }
 
-        const studentSocket = new WebSocket(`ws://62.109.26.235:80/ws/student/${studentId}`);
+        const studentSocket = new WebSocket(`ws://${process.env.REACT_APP_HOST}/ws/student/${studentId}`);
         studentSocket.onopen = () => {
             studentSocket.send(JSON.stringify({
                 question_id: currentQuestionId,

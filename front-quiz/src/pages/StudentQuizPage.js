@@ -12,7 +12,7 @@ const StudentQuizPage = () => {
   useEffect(() => {
     console.log("Student ID from URL:", student_id);
 
-    const ws = new WebSocket(`ws://62.109.26.235:80/ws/student/${student_id}`);
+    const ws = new WebSocket(`ws://${process.env.REACT_APP_HOST}/ws/student/${student_id}`);
     
     ws.onopen = () => {
       console.log('Connected to student WebSocket');

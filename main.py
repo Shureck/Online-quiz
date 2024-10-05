@@ -6,14 +6,8 @@ from fastapi.responses import HTMLResponse
 from fastapi.responses import RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 import random
-from sqlalchemy.orm import Session
-from models import Student, Answer, Question
-from database import get_db, engine
-from models import Base
-
-# Создание таблиц в базе данных
-Base.metadata.create_all(bind=engine)
-
+#from models import Student, Answer, Question
+import models
 app = FastAPI()
 
 origins = ["*"]
@@ -34,29 +28,18 @@ students_connected = []
 teachers_connected = []
 
 # Загрузка вопросов из JSON файла
-def load_questions(db: Session):
+def load_questions():
     global quiz_data
     with open("questions.json", "r") as f:
         quiz_data = json.load(f)
-    
-    # Добавляем вопросы в базу данных, если их там нет
-    for question in quiz_data:
-        existing_question = db.query(Question).filter(Question.id == question["id"]).first()
-        if not existing_question:
-            new_question = Question(
-                id=question["id"],
-                text=question["text"],
-                options=json.dumps(question["options"]),
-                correct_answer=question["correct_answer"]
-            )
-            db.add(new_question)
-    db.commit()
+
+    models.add_questions(quiz_data)
 
 # Функция для генерации уникального 4-значного кода
-def generate_unique_code(db: Session):
+def generate_unique_code():
     while True:
         unique_id = ''.join([str(random.randint(0, 9)) for _ in range(4)])
-        existing_student = db.query(Student).filter(Student.unique_id == unique_id).first()
+        existing_student = models.get_student(unique_id=unique_id)
         if not existing_student:
             return unique_id
 
@@ -67,14 +50,10 @@ async def register_page(request: Request):
 
 # Маршрут для обработки данных регистрации студента
 @app.post("/register_student")
-async def register_student(name: str = Form(...), db: Session = Depends(get_db)):
+async def register_student(name: str = Form(...)):
     # Генерация уникального ID
-    unique_id = generate_unique_code(db)
-
-    # Сохранение студента в БД
-    student = Student(name=name, unique_id=unique_id)
-    db.add(student)
-    db.commit()
+    unique_id = generate_unique_code()
+    models.add_new_student(name=name, unique_id=unique_id)
 
     # Редирект на страницу с квизом
     return RedirectResponse(f"/student/{unique_id}", status_code=303)
@@ -91,13 +70,13 @@ async def student_page(request: Request, student_id: str):
 
 # WebSocket для преподавателя
 @app.websocket("/ws/teacher")
-async def teacher_websocket(websocket: WebSocket, db: Session = Depends(get_db)):
+async def teacher_websocket(websocket: WebSocket):
     await websocket.accept()
     teachers_connected.append(websocket)
 
     # Отправка текущего вопроса преподавателю при подключении
     if current_question_index >= 0:
-        await send_current_question_to_teacher(websocket, db)
+        await send_current_question_to_teacher(websocket)
 
     try:
         while True:
@@ -114,11 +93,11 @@ async def send_question_to_students():
         await student.send_json({"question": question})
 
 # Отправка текущего вопроса преподавателю
-async def send_current_question_to_teacher(websocket: WebSocket, db: Session):
+async def send_current_question_to_teacher(websocket: WebSocket):
     question = quiz_data[current_question_index]
     await websocket.send_json({
         "question": question,
-        "stats": await get_answer_stats(current_question_index, db)
+        "stats": await get_answer_stats(current_question_index)
     })
 
 # Отправка текущего вопроса студенту
@@ -127,9 +106,9 @@ async def send_current_question_to_student(websocket: WebSocket):
     await websocket.send_json({"question": question})
 
 # Отправка статистики по ответам преподавателю
-async def send_statistics_to_teacher(db: Session):
+async def send_statistics_to_teacher():
     # Получаем все ответы
-    answers = db.query(Answer).all()
+    answers = models.get_all_answers()
 
     # Собираем статистику ответов
     stats = {}
@@ -145,12 +124,12 @@ async def send_statistics_to_teacher(db: Session):
 
 
 # Получение статистики ответов по текущему вопросу
-async def get_answer_stats(question_id: int, db: Session):
-    answers = db.query(Answer).filter(Answer.question_id == question_id).all()
+async def get_answer_stats(question_id: int):
+    answers = models.get_all_answers(question_id=question_id)
     stats = {'correct': 0, 'incorrect': 0}
     
     # Assuming you have a way to determine the correct answer
-    question = db.query(Question).filter(Question.id == question_id).first()
+    question = models.get_question(question_id=question_id)
     if question:
         correct_answer = question.correct_answer
 
@@ -162,12 +141,12 @@ async def get_answer_stats(question_id: int, db: Session):
     
     return stats
 
-async def send_all_statistics_to_teacher(db: Session):
+async def send_all_statistics_to_teacher():
     all_stats = {}
-    questions = db.query(Question).all()
+    questions = models.get_all_questions()
     
     for question in questions:
-        all_stats[question.id] = await get_answer_stats(question.id, db)
+        all_stats[question.id] = await get_answer_stats(question.id)
     
     print("Sending stats to teacher:", all_stats)  # Debugging line
     
@@ -180,22 +159,18 @@ async def send_all_statistics_to_teacher(db: Session):
 # Запуск квиза
 # Start the quiz and reset stats
 @app.post("/start_quiz")
-async def start_quiz(db: Session = Depends(get_db)):
+async def start_quiz():
     global current_question_index
 
     # Reset the current question index and load questions again
     current_question_index = 0
-    load_questions(db)
-
-    # Clear previous answers from the database (optional if you want a fresh start)
-    db.query(Answer).delete()
-    db.commit()
+    load_questions()
 
     # Notify connected students about the start of a new quiz
     await send_question_to_students()
 
     # Notify connected teachers with empty stats
-    await send_all_statistics_to_teacher(db)
+    await send_all_statistics_to_teacher()
 
     return {"message": "Quiz started"}
 
@@ -209,7 +184,7 @@ async def next_question():
     return {"message": "Next question sent"}
 
 @app.websocket("/ws/student/{student_id}")
-async def student_websocket(websocket: WebSocket, student_id: str, db: Session = Depends(get_db)):
+async def student_websocket(websocket: WebSocket, student_id: str):
     await websocket.accept()
     students_connected.append(websocket)
 
@@ -222,16 +197,12 @@ async def student_websocket(websocket: WebSocket, student_id: str, db: Session =
             question_id = data.get("question_id")
             answer_text = data.get("answer_text")
 
-            student = db.query(Student).filter(Student.unique_id == student_id).first()
+            student = models.get_student(unique_id=student_id)
             if student:
                 tr = quiz_data[question_id-1]['correct_answer'] == answer_text
-                print(question_id-1, quiz_data[question_id-1]['correct_answer'], answer_text,quiz_data[question_id-1]['correct_answer'] == answer_text)
-                answer = Answer(student_id=student.id, question_id=question_id, answer_text=answer_text, is_correct=quiz_data[question_id-1]['correct_answer'] == answer_text)
-                db.add(answer)
-                db.commit()
-
+                models.add_answer(student_id=student.id, question_id=question_id, answer_text=answer_text, is_correct=tr)
                 # Send updated stats after each answer
-                await send_all_statistics_to_teacher(db)
+                await send_all_statistics_to_teacher()
             else:
                 print(f"Student with ID {student_id} not found.")
 
