@@ -11,18 +11,16 @@ services:
     ports:
       - 5435:5432
     environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_USER=iot
+      - POSTGRES_PASSWORD=samsung
       - POSTGRES_DB=biji
 
-  # frontend:
-  #     build:
-  #       context: ./front-quiz     # Путь к папке, где находится Dockerfile
-  #       dockerfile: dockerfile     # Имя Dockerfile (по умолчанию)
-  #     ports:
-  #       - 3000:3000                 # Пробрасываем порт
-  #     networks:
-  #       - frontend-network         # Сеть, которую мы создадим ниже
+  frontend:
+      build:
+        context: ./front-quiz     # Путь к папке, где находится Dockerfile
+        dockerfile: Dockerfile     # Имя Dockerfile (по умолчанию)
+      ports:
+        - 3000:3000                 # Пробрасываем порт
 
   web:
     build: .
@@ -33,7 +31,3 @@ services:
       - 80:80
     depends_on:
       - db
-
-networks:
-  frontend-network:
-    driver: bridge              # Используем мостовую сеть

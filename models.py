@@ -5,7 +5,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 import json
 
-SQLALCHEMY_DATABASE_URL = "postgresql+psycopg2://postgres:postgres@localhost:5435/biji"
+SQLALCHEMY_DATABASE_URL = "postgresql+psycopg2://iot:samsung@db:5432/biji"
 
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL,
